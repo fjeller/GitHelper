@@ -68,7 +68,35 @@ export default function SettingsPage({ config, onConfigChange }: Props) {
       <div>
         <h1 style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Settings</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-          Manage the global list of repositories used across all operations.
+          Manage the global list of repositories and shared branch defaults used across operations.
+        </p>
+      </div>
+
+      <div
+        style={{
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          padding: 16,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}
+      >
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          Branch Defaults
+        </div>
+        <div style={{ maxWidth: 360 }}>
+          <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Master Branch</label>
+          <input
+            type="text"
+            value={config.masterBranch}
+            onChange={e => onConfigChange({ ...config, masterBranch: e.target.value })}
+            placeholder="main"
+          />
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+          Used as the safe branch to switch to before deleting another branch. Defaults to main when left empty.
         </p>
       </div>
 

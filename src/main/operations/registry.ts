@@ -2,16 +2,14 @@ import type { Operation, OperationMeta } from './types'
 import { createBranchOperation } from './create-branch'
 import { deleteBranchOperation } from './delete-branch'
 import { autoMergeOperation } from './auto-merge'
-import { recreateDevelopmentOperation } from './recreate-development'
-import { recreateTestOperation } from './recreate-test'
+import { recreateBranchOperation } from './recreate-branch'
 import { tagAllOperation } from './tag-all'
 
 const operations: Operation[] = [
   createBranchOperation,
   deleteBranchOperation,
   autoMergeOperation,
-  recreateDevelopmentOperation,
-  recreateTestOperation,
+  recreateBranchOperation,
   tagAllOperation,
 ]
 

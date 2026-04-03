@@ -28,6 +28,10 @@ export interface OperationResult {
   }[]
 }
 
+export interface OperationContext {
+  config: AppConfig
+}
+
 export interface Operation {
   id: string
   name: string
@@ -41,14 +45,16 @@ export interface Operation {
     repos: string[],
     params: Record<string, string | boolean>,
     log: (entry: OperationLogEntry) => void,
-    abortSignal: AbortSignal
+    abortSignal: AbortSignal,
+    context: OperationContext
   ): Promise<OperationResult>
 
   execute(
     repos: string[],
     params: Record<string, string | boolean>,
     log: (entry: OperationLogEntry) => void,
-    abortSignal: AbortSignal
+    abortSignal: AbortSignal,
+    context: OperationContext
   ): Promise<OperationResult>
 }
 
@@ -78,6 +84,7 @@ export interface OperationConfig {
 export interface AppConfig {
   repositories: Repository[]
   operations: Record<string, OperationConfig>
+  masterBranch: string
 }
 
 // ─── History types ─────────────────────────────────────────────────────────

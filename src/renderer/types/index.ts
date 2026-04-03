@@ -32,7 +32,7 @@ declare global {
       }
       config: {
         get: () => Promise<AppConfig>
-        set: (config: AppConfig) => Promise<void>
+        set: (config: AppConfig) => Promise<AppConfig>
       }
       history: {
         list: () => Promise<HistoryEntry[]>

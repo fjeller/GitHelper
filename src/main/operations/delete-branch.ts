@@ -1,5 +1,26 @@
-import type { Operation, OperationLogEntry, OperationResult } from './types'
+import type { Operation, OperationContext, OperationLogEntry, OperationResult } from './types'
 import { getGit, validateRepo, sanitizeBranchName, makeLogEntry } from '../services/git.service'
+
+function getProtectedBranchName(context: OperationContext): string {
+  return sanitizeBranchName(context.config.masterBranch || 'main')
+}
+
+function cannotDeleteProtectedBranch(
+  branchName: string,
+  protectedBranchName: string,
+  repos: string[]
+): OperationResult {
+  return {
+    success: false,
+    summary: `Branch '${branchName}' is configured as the master branch and cannot be deleted`,
+    logs: [makeLogEntry('error', `Branch '${branchName}' is configured as the master branch and cannot be deleted`)],
+    perRepo: repos.map(repository => ({
+      repository,
+      status: 'failed',
+      detail: `Protected branch '${protectedBranchName}' cannot be deleted`,
+    })),
+  }
+}
 
 export const deleteBranchOperation: Operation = {
   id: 'delete-branch',
@@ -17,10 +38,17 @@ export const deleteBranchOperation: Operation = {
   repoSelection: 'user',
   supportsDryRun: true,
 
-  async dryRun(repos, params, log, abortSignal) {
+  async dryRun(repos, params, log, abortSignal, context) {
     const branchName = sanitizeBranchName(params.branchName as string)
+    const protectedBranchName = getProtectedBranchName(context)
     const logs: OperationLogEntry[] = []
     const perRepo: OperationResult['perRepo'] = []
+
+    if (branchName === protectedBranchName) {
+      const result = cannotDeleteProtectedBranch(branchName, protectedBranchName, repos)
+      result.logs.forEach(log)
+      return result
+    }
 
     log(makeLogEntry('info', `Dry run: checking which repos have branch '${branchName}'`))
     logs.push(makeLogEntry('info', `Dry run: checking branch '${branchName}'`))
@@ -63,11 +91,18 @@ export const deleteBranchOperation: Operation = {
     }
   },
 
-  async execute(repos, params, log, abortSignal) {
+  async execute(repos, params, log, abortSignal, context) {
     const branchName = sanitizeBranchName(params.branchName as string)
+    const protectedBranchName = getProtectedBranchName(context)
     const logs: OperationLogEntry[] = []
     const perRepo: OperationResult['perRepo'] = []
     let successCount = 0
+
+    if (branchName === protectedBranchName) {
+      const result = cannotDeleteProtectedBranch(branchName, protectedBranchName, repos)
+      result.logs.forEach(log)
+      return result
+    }
 
     for (const repoPath of repos) {
       if (abortSignal.aborted) {
@@ -86,14 +121,9 @@ export const deleteBranchOperation: Operation = {
         // Switch away from target branch if currently on it
         const status = await git.status()
         if (status.current === branchName) {
-          // Try main first, then develop
-          try {
-            await git.checkout('main')
-          } catch {
-            await git.checkout('develop')
-          }
-          log(makeLogEntry('info', `Switched away from '${branchName}'`, repoPath))
-          logs.push(makeLogEntry('info', `Switched away from '${branchName}'`, repoPath))
+          await git.checkout(protectedBranchName)
+          log(makeLogEntry('info', `Switched from '${branchName}' to '${protectedBranchName}'`, repoPath))
+          logs.push(makeLogEntry('info', `Switched from '${branchName}' to '${protectedBranchName}'`, repoPath))
         }
 
         // Delete local branch if exists

@@ -1,5 +1,5 @@
-import type { Operation, OperationLogEntry, OperationResult } from './types'
-import { getGit, validateRepo, makeLogEntry } from '../services/git.service'
+import type { Operation, OperationContext, OperationLogEntry, OperationResult } from './types'
+import { getGit, validateRepo, sanitizeBranchName, makeLogEntry } from '../services/git.service'
 
 async function recreateBranch(
   branchName: string,
@@ -14,7 +14,7 @@ async function recreateBranch(
   let successCount = 0
 
   const prefix = dryRun ? '[Dry Run] ' : ''
-  log(makeLogEntry('info', `${prefix}Re-creating branch '${branchName}' from '${baseBranch}' in all repositories`))
+  log(makeLogEntry('info', `${prefix}Re-creating branch '${branchName}' from '${baseBranch}'`))
   logs.push(makeLogEntry('info', `${prefix}Re-creating '${branchName}' from '${baseBranch}'`))
 
   for (const repoPath of repos) {
@@ -35,14 +35,18 @@ async function recreateBranch(
       const remoteSummary = await git.branch(['-r'])
       const existsLocal = localBranches.all.includes(branchName)
       const existsRemote = remoteSummary.all.some(b => b.trim() === `origin/${branchName}`)
+      const existsAnywhere = existsLocal || existsRemote
 
       if (dryRun) {
-        const parts = []
-        if (existsLocal) parts.push('local')
-        if (existsRemote) parts.push('remote')
-        const detail = parts.length > 0
-          ? `Would delete (${parts.join(', ')}) and recreate from '${baseBranch}'`
-          : `Would create from '${baseBranch}' (branch does not currently exist)`
+        let detail: string
+        if (existsAnywhere) {
+          const parts: string[] = []
+          if (existsLocal) parts.push('local')
+          if (existsRemote) parts.push('remote')
+          detail = `Would delete (${parts.join(', ')}) and recreate from '${baseBranch}'`
+        } else {
+          detail = `Branch does not exist — would create from '${baseBranch}'`
+        }
         log(makeLogEntry('info', detail, repoPath))
         logs.push(makeLogEntry('info', detail, repoPath))
         perRepo.push({ repository: repoPath, status: 'success', detail })
@@ -72,8 +76,9 @@ async function recreateBranch(
       await git.checkoutBranch(branchName, baseBranch)
       await git.push('origin', branchName, ['--set-upstream'])
 
-      log(makeLogEntry('success', `'${branchName}' recreated and pushed`, repoPath))
-      logs.push(makeLogEntry('success', `'${branchName}' recreated and pushed`, repoPath))
+      const verb = existsAnywhere ? 'recreated' : 'created'
+      log(makeLogEntry('success', `'${branchName}' ${verb} and pushed`, repoPath))
+      logs.push(makeLogEntry('success', `'${branchName}' ${verb} and pushed`, repoPath))
       perRepo.push({ repository: repoPath, status: 'success' })
       successCount++
     } catch (err: unknown) {
@@ -93,19 +98,31 @@ async function recreateBranch(
   }
 }
 
-export const recreateDevelopmentOperation: Operation = {
-  id: 'recreate-development',
-  name: 'Re-Create Development',
-  description: "Delete and recreate the 'development' branch from 'main' in ALL repositories.",
-  parameters: [],
-  repoSelection: 'all',
+export const recreateBranchOperation: Operation = {
+  id: 'recreate-branch',
+  name: 'Re-Create Branch',
+  description: 'Delete and recreate a branch from the configured master branch across selected repositories. Creates the branch if it does not yet exist.',
+  parameters: [
+    {
+      id: 'branchName',
+      label: 'Target Branch',
+      type: 'text',
+      required: true,
+      placeholder: 'development',
+    },
+  ],
+  repoSelection: 'user',
   supportsDryRun: true,
 
-  async dryRun(repos, _params, log, abortSignal) {
-    return recreateBranch('development', 'main', repos, log, abortSignal, true)
+  async dryRun(repos, params, log, abortSignal, context: OperationContext) {
+    const branchName = sanitizeBranchName(params.branchName as string)
+    const baseBranch = sanitizeBranchName(context.config.masterBranch || 'main')
+    return recreateBranch(branchName, baseBranch, repos, log, abortSignal, true)
   },
 
-  async execute(repos, _params, log, abortSignal) {
-    return recreateBranch('development', 'main', repos, log, abortSignal, false)
+  async execute(repos, params, log, abortSignal, context: OperationContext) {
+    const branchName = sanitizeBranchName(params.branchName as string)
+    const baseBranch = sanitizeBranchName(context.config.masterBranch || 'main')
+    return recreateBranch(branchName, baseBranch, repos, log, abortSignal, false)
   },
 }

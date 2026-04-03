@@ -45,7 +45,7 @@ function reducer(state: AppState, action: Action): AppState {
 }
 
 const initialState: AppState = {
-  config: { repositories: [], operations: {} },
+  config: { repositories: [], operations: {}, masterBranch: 'main' },
   operations: [],
   activePage: 'create-branch',
   isRunning: false,
@@ -82,8 +82,8 @@ export default function App() {
   }, [])
 
   const handleConfigChange = useCallback(async (cfg: AppConfig) => {
-    await window.api.config.set(cfg)
-    dispatch({ type: 'SET_CONFIG', payload: cfg })
+    const normalizedConfig = await window.api.config.set(cfg)
+    dispatch({ type: 'SET_CONFIG', payload: normalizedConfig })
   }, [])
 
   const handleRunStart = useCallback(() => dispatch({ type: 'RUN_START' }), [])

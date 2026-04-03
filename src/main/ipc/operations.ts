@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { getOperation, getOperationMetas } from '../operations/registry'
 import { addHistoryEntry } from '../services/history.service'
 import type { OperationLogEntry } from '../operations/types'
+import { getConfig } from '../services/config.service'
 
 let currentAbortController: AbortController | null = null
 
@@ -16,13 +17,14 @@ export function registerOperationHandlers(win: BrowserWindow): void {
 
       currentAbortController = new AbortController()
       const { signal } = currentAbortController
+      const context = { config: getConfig() }
 
       const logFn = (entry: OperationLogEntry) => {
         win.webContents.send('operations:log', entry)
       }
 
       try {
-        const result = await operation.execute(repos, params, logFn, signal)
+        const result = await operation.execute(repos, params, logFn, signal, context)
         addHistoryEntry(operationId, operation.name, result)
         win.webContents.send('operations:complete', result)
       } catch (err: unknown) {
@@ -50,13 +52,14 @@ export function registerOperationHandlers(win: BrowserWindow): void {
 
       currentAbortController = new AbortController()
       const { signal } = currentAbortController
+      const context = { config: getConfig() }
 
       const logFn = (entry: OperationLogEntry) => {
         win.webContents.send('operations:log', entry)
       }
 
       try {
-        const result = await operation.dryRun(repos, params, logFn, signal)
+        const result = await operation.dryRun(repos, params, logFn, signal, context)
         win.webContents.send('operations:complete', result)
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err)

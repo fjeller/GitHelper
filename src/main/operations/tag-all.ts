@@ -113,9 +113,10 @@ async function checkTagAvailability(
       const git = getGit(repoPath)
       await git.fetch(['--all', '--prune', '--tags'])
 
-      // Check base branch exists on remote
+      // Check base branch exists on remote (case-insensitive — casing can differ across repos)
       const remoteSummary = await git.branch(['-r'])
-      const branchExists = remoteSummary.all.some(b => b.trim() === `origin/${baseBranch}`)
+      const expectedRef = `origin/${baseBranch}`.toLowerCase()
+      const branchExists = remoteSummary.all.some(b => b.trim().toLowerCase() === expectedRef)
       if (!branchExists) {
         log(makeLogEntry('error', `Remote branch 'origin/${baseBranch}' not found`, repoPath))
         logs.push(makeLogEntry('error', `Remote branch 'origin/${baseBranch}' not found`, repoPath))

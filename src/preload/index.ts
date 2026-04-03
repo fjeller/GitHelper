@@ -44,7 +44,7 @@ const api = {
   // Config
   config: {
     get: (): Promise<AppConfig> => ipcRenderer.invoke('config:get'),
-    set: (config: AppConfig): Promise<void> => ipcRenderer.invoke('config:set', config),
+    set: (config: AppConfig): Promise<AppConfig> => ipcRenderer.invoke('config:set', config),
   },
 
   // History
