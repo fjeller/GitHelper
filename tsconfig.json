@@ -8,12 +8,7 @@
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@renderer/*": ["src/renderer/*"],
-      "@main/*": ["src/main/*"]
-    }
+    "resolveJsonModule": true
   },
   "include": ["src/renderer/**/*", "src/preload/**/*"],
   "exclude": ["node_modules", "dist", "out"]
