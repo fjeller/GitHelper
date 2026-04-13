@@ -33,6 +33,7 @@ declare global {
       config: {
         get: () => Promise<AppConfig>
         set: (config: AppConfig) => Promise<AppConfig>
+        parseRepoFile: (filePath: string) => Promise<string[]>
       }
       history: {
         list: () => Promise<HistoryEntry[]>

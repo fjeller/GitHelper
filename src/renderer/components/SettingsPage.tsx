@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import type { AppConfig, Repository } from '../types/index'
 
 interface Props {
@@ -11,6 +11,8 @@ export default function SettingsPage({ config, onConfigChange }: Props) {
   const [newName, setNewName] = useState('')
   const [error, setError] = useState('')
   const [dragOver, setDragOver] = useState(false)
+  const [importInfo, setImportInfo] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const addRepo = (path: string, name?: string) => {
     path = path.trim()
@@ -54,11 +56,54 @@ export default function SettingsPage({ config, onConfigChange }: Props) {
     for (const p of paths) addRepo(p)
   }
 
+  const handleLoadFromFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!fileInputRef.current) return
+    fileInputRef.current.value = ''
+    if (!file) return
+
+    setImportInfo('')
+    setError('')
+
+    const filePath = (file as File & { path: string }).path
+    let validPaths: string[]
+    try {
+      validPaths = await window.api.config.parseRepoFile(filePath)
+    } catch {
+      setError('Failed to read file.')
+      return
+    }
+
+    if (validPaths.length === 0) {
+      setImportInfo('No valid repository folders found in file.')
+      return
+    }
+
+    const existing = new Set(config.repositories.map(r => r.path))
+    const newRepos = validPaths.filter(p => !existing.has(p))
+    const duplicates = validPaths.length - newRepos.length
+
+    if (newRepos.length === 0) {
+      setImportInfo('All folders in the file are already in the list.')
+      return
+    }
+
+    const added = newRepos.map(p => ({
+      path: p,
+      name: p.split(/[\\/]/).pop() ?? p,
+    }))
+    onConfigChange({ ...config, repositories: [...config.repositories, ...added] })
+
+    const parts = [`Added ${newRepos.length} repositor${newRepos.length === 1 ? 'y' : 'ies'}.`]
+    if (duplicates > 0) parts.push(`${duplicates} already in list, skipped.`)
+    setImportInfo(parts.join(' '))
+  }
+
   return (
     <div
       style={{
         flex: 1,
-        overflowY: 'auto',
+        overflow: 'hidden',
         padding: 24,
         display: 'flex',
         flexDirection: 'column',
@@ -153,6 +198,25 @@ export default function SettingsPage({ config, onConfigChange }: Props) {
         <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
           You can also drag &amp; drop a folder into this area.
         </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,text/plain"
+            style={{ display: 'none' }}
+            onChange={handleLoadFromFile}
+          />
+          <button
+            className="btn-secondary"
+            onClick={() => { setImportInfo(''); setError(''); fileInputRef.current?.click() }}
+          >
+            Load from file…
+          </button>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Import repository paths from a .txt file (one path per line)
+          </span>
+        </div>
+        {importInfo && <p style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{importInfo}</p>}
         {error && <p style={{ color: 'var(--error)', fontSize: 12 }}>{error}</p>}
       </div>
 
@@ -163,9 +227,13 @@ export default function SettingsPage({ config, onConfigChange }: Props) {
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius)',
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minHeight: 0,
         }}
       >
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+        <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, flexShrink: 0 }}>
           Repositories ({config.repositories.length})
         </div>
         {config.repositories.length === 0 ? (
@@ -173,7 +241,7 @@ export default function SettingsPage({ config, onConfigChange }: Props) {
             No repositories yet. Add one above.
           </p>
         ) : (
-          <div>
+          <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
             {config.repositories.map((repo, i) => (
               <RepoRow
                 key={repo.path}
