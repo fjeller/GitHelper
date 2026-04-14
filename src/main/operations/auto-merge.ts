@@ -58,7 +58,7 @@ export const autoMergeOperation: Operation = {
         const git = getGit(repoPath)
         await git.checkout(targetBranch)
         await git.pull('origin', targetBranch)
-        await git.merge([sourceBranch, '--no-ff'])
+        await git.merge([sourceBranch, '--no-ff', '-m', `[GitHelper AutoMerge] merge branch '${sourceBranch}' into '${targetBranch}'`])
         await git.push('origin', targetBranch)
 
         log(makeLogEntry('success', `Merge complete`, repoPath))
