@@ -42,6 +42,13 @@ export const autoMergeOperation: Operation = {
     const logs: OperationLogEntry[] = [...conflictResult.logs]
     const perRepo: OperationResult['perRepo'] = []
     let successCount = 0
+    let skippedCount = 0
+
+    const noChangesRepos = new Set(
+      conflictResult.perRepo
+        .filter(r => r.status === 'skipped' && r.detail === 'No changes')
+        .map(r => r.repository)
+    )
 
     log(makeLogEntry('info', `Phase 2: Executing merges...`))
     logs.push(makeLogEntry('info', `Phase 2: Executing merges`))
@@ -49,6 +56,14 @@ export const autoMergeOperation: Operation = {
     for (const repoPath of repos) {
       if (abortSignal.aborted) {
         perRepo.push({ repository: repoPath, status: 'skipped', detail: 'Aborted' })
+        continue
+      }
+
+      if (noChangesRepos.has(repoPath)) {
+        log(makeLogEntry('info', `Skipped — no changes`, repoPath))
+        logs.push(makeLogEntry('info', `Skipped — no changes`, repoPath))
+        perRepo.push({ repository: repoPath, status: 'skipped', detail: 'No changes' })
+        skippedCount++
         continue
       }
 
@@ -78,9 +93,12 @@ export const autoMergeOperation: Operation = {
       }
     }
 
+    const mergeableCount = repos.length - skippedCount
+    const summaryParts = [`Merge '${sourceBranch}' → '${targetBranch}': ${successCount}/${mergeableCount} repositories succeeded`]
+    if (skippedCount > 0) summaryParts.push(`${skippedCount} skipped (no changes)`)
     return {
-      success: successCount === repos.length,
-      summary: `Merge '${sourceBranch}' → '${targetBranch}': ${successCount}/${repos.length} repositories succeeded`,
+      success: successCount === mergeableCount,
+      summary: summaryParts.join(', '),
       logs,
       perRepo,
     }
@@ -99,6 +117,7 @@ async function runConflictCheck(
   const logs: OperationLogEntry[] = []
   const perRepo: OperationResult['perRepo'] = []
   const conflicted: string[] = []
+  const noChanges: string[] = []
 
   log(makeLogEntry('info', `Phase 1: Conflict check — '${sourceBranch}' → '${targetBranch}'`))
   logs.push(makeLogEntry('info', `Phase 1: Conflict check — '${sourceBranch}' → '${targetBranch}'`))
@@ -132,6 +151,11 @@ async function runConflictCheck(
           logs.push(makeLogEntry('error', `Conflicts: ${status.conflicted.join(', ')}`, repoPath))
           conflicted.push(repoPath)
           perRepo.push({ repository: repoPath, status: 'failed', detail: `${status.conflicted.length} conflict(s)` })
+        } else if (status.staged.length === 0) {
+          log(makeLogEntry('info', `No changes — already up to date`, repoPath))
+          logs.push(makeLogEntry('info', `No changes — already up to date`, repoPath))
+          noChanges.push(repoPath)
+          perRepo.push({ repository: repoPath, status: 'skipped', detail: 'No changes' })
         } else {
           log(makeLogEntry('success', `No conflicts`, repoPath))
           logs.push(makeLogEntry('success', `No conflicts`, repoPath))
@@ -164,9 +188,12 @@ async function runConflictCheck(
     }
   }
 
+  const mergeable = repos.length - noChanges.length
+  const summaryParts = [`No conflicts in ${mergeable} repository(ies) — safe to merge`]
+  if (noChanges.length > 0) summaryParts.push(`${noChanges.length} already up to date`)
   return {
     success: true,
-    summary: `No conflicts in any of ${repos.length} repositories — safe to merge`,
+    summary: summaryParts.join(', '),
     logs,
     perRepo,
   }
