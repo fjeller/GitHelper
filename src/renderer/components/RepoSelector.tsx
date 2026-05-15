@@ -18,8 +18,12 @@ export default function RepoSelector({ repositories, selected, onChange, disable
   }
 
   const toggle = (path: string) => {
-    if (selected.includes(path)) onChange(selected.filter(p => p !== path))
-    else onChange([...selected, path])
+    if (selected.includes(path)) {
+      onChange(selected.filter(p => p !== path))
+    } else {
+      const newSelected = new Set([...selected, path])
+      onChange(repositories.map(r => r.path).filter(p => newSelected.has(p)))
+    }
   }
 
   return (
