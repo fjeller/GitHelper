@@ -1,5 +1,6 @@
 import type { Operation, OperationLogEntry, OperationResult } from './types'
 import { getGit, validateRepo, sanitizeBranchName, makeLogEntry } from '../services/git.service'
+import type { SimpleGit } from 'simple-git'
 
 export const autoMergeOperation: Operation = {
   id: 'auto-merge',
@@ -56,9 +57,11 @@ export const autoMergeOperation: Operation = {
 
       try {
         const git = getGit(repoPath)
+        await git.fetch(['--all', '--prune'])
         await git.checkout(targetBranch)
         await git.pull('origin', targetBranch)
-        await git.merge([sourceBranch, '--no-ff'])
+        await ensureSourceBranch(git, sourceBranch, targetBranch)
+        await git.merge([sourceBranch, '--no-ff', '-m', `[GitHelper AutoMerge] merge branch '${sourceBranch}' into '${targetBranch}'`])
         await git.push('origin', targetBranch)
 
         log(makeLogEntry('success', `Merge complete`, repoPath))
@@ -112,6 +115,7 @@ async function runConflictCheck(
       await git.fetch(['--all', '--prune'])
       await git.checkout(targetBranch)
       await git.pull('origin', targetBranch)
+      await ensureSourceBranch(git, sourceBranch, targetBranch)
 
       // Test merge
       try {
@@ -170,4 +174,15 @@ async function runConflictCheck(
 
 function aborted(logs: OperationLogEntry[]): OperationResult {
   return { success: false, summary: 'Operation was aborted by user', logs, perRepo: [] }
+}
+
+async function ensureSourceBranch(git: SimpleGit, sourceBranch: string, targetBranch: string): Promise<void> {
+  const localBranches = await git.branchLocal()
+  if (localBranches.all.includes(sourceBranch)) {
+    await git.checkout(sourceBranch)
+    await git.pull('origin', sourceBranch)
+  } else {
+    await git.checkout(['-b', sourceBranch, '--track', `origin/${sourceBranch}`])
+  }
+  await git.checkout(targetBranch)
 }

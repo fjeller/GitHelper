@@ -45,6 +45,7 @@ const api = {
   config: {
     get: (): Promise<AppConfig> => ipcRenderer.invoke('config:get'),
     set: (config: AppConfig): Promise<AppConfig> => ipcRenderer.invoke('config:set', config),
+    parseRepoFile: (filePath: string): Promise<string[]> => ipcRenderer.invoke('config:parse-repo-file', filePath),
   },
 
   // History

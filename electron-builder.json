@@ -27,11 +27,15 @@
       "zip"
     ]
   },
+  "portable": {
+    "unpackDirName": "GitHelper",
+    "artifactName": "githelper-portable.exe"
+  },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "artifactName": "githelper-setup-${version}.exe"
+    "artifactName": "githelper-setup.exe"
   }
 }

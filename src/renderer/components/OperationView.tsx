@@ -127,7 +127,7 @@ export default function OperationView({
 
       <div style={{ flex: 1, display: 'flex', gap: 16, overflow: 'hidden', minHeight: 0 }}>
         {/* Left column: params + repos + buttons */}
-        <div style={{ width: 340, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
+        <div style={{ width: 340, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
           {/* Parameters */}
           {operation.parameters.length > 0 && (
             <Section title="Parameters">
@@ -189,6 +189,7 @@ export default function OperationView({
                 ? 'Repositories (all)'
                 : 'Repositories'
             }
+            flex
           >
             {config.repositories.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>
@@ -259,7 +260,7 @@ export default function OperationView({
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, flex }: { title: string; children: React.ReactNode; flex?: boolean }) {
   return (
     <div
       style={{
@@ -267,6 +268,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         borderRadius: 'var(--radius)',
         border: '1px solid var(--border)',
         overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        ...(flex ? { flex: 1, minHeight: 0 } : {}),
       }}
     >
       <div
@@ -278,11 +282,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
           color: 'var(--text-muted)',
           textTransform: 'uppercase',
           letterSpacing: 0.8,
+          flexShrink: 0,
         }}
       >
         {title}
       </div>
-      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10, ...(flex ? { flex: 1, minHeight: 0, overflowY: 'auto' } : {}) }}>
         {children}
       </div>
     </div>
