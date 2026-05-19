@@ -14,6 +14,7 @@ function createWindow(): void {
     minHeight: 600,
     frame: false,
     backgroundColor: '#1a1d23',
+    icon: path.join(__dirname, '../../../build/githelper.ico'), 
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
